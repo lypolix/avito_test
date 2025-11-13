@@ -21,7 +21,7 @@ jobs:
       - name: GolangCI-Lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.61.0
+          version: latest
 
       - name: Build
         run: go build ./cmd/server
