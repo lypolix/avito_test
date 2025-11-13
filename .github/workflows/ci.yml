@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: GolangCI-Lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.60
+
+      - name: Build
+        run: go build ./cmd/server
+
+      - name: Run unit tests
+        run: go test -race -coverprofile=coverage.out ./...
+
+#   e2e:
+#     runs-on: ubuntu-latest
+#     services:
+#       postgres:
+#         image: postgres:16-alpine
+#         env:
+#           POSTGRES_USER: app
+#           POSTGRES_PASSWORD: app
+#           POSTGRES_DB: app
+#         ports:
+#           - 5432:5432
+#         options: >-
+#           --health-cmd="pg_isready -U app -d app"
+#           --health-interval=5s
+#           --health-timeout=3s
+#           --health-retries=10
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-go@v5
+#         with:
+#           go-version: '1.22'
+#       - name: Build server
+#         run: go build -o server ./cmd/server
+#       - name: Start server in background
+#         env:
+#           DATABASE_URL: postgres://app:app@localhost:5432/app?sslmode=disable
+#         run: |
+#           ./server &
+#           sleep 2
+#       - name: Smoke/E2E placeholder
+#         run: |
+#           curl -sSf http://localhost:8080/health || (echo "Health failed" && exit 1)
