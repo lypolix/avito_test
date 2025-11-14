@@ -72,7 +72,7 @@ func (s *Service) ReassignReviewer(prID, oldUserID string) (*models.ReassignResp
 		return nil, err
 	}
 	if pr == nil {
-		return nil, NewBusinessError(ErrorNotFound, "PR not found")
+		return nil, NewBusinessError(ErrorNotFound, "resource not found")
 	}
 
 	if pr.Status == "MERGED" {
