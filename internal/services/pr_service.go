@@ -2,7 +2,6 @@ package services
 
 import (
 	"github.com/lypolix/avito_test/internal/models"
-	"time"
 )
 
 func (s *Service) CreatePR(prRequest *models.CreatePRRequest) (*models.PullRequest, error) {
@@ -19,7 +18,7 @@ func (s *Service) CreatePR(prRequest *models.CreatePRRequest) (*models.PullReque
 		return nil, err
 	}
 	if author == nil {
-		return nil, NewBusinessError(ErrorNotFound, "author not found")
+		return nil, NewBusinessError(ErrorNotFound, "resource not found")
 	}
 
 	reviewers, err := s.autoAssignReviewers(author)
@@ -33,7 +32,6 @@ func (s *Service) CreatePR(prRequest *models.CreatePRRequest) (*models.PullReque
 		AuthorID:         prRequest.AuthorID,
 		Status:           "OPEN",
 		AssignedReviewers: reviewers,
-		CreatedAt:        time.Now(),
 	}
 
 	if err := s.repo.CreatePR(pr); err != nil {
@@ -49,7 +47,7 @@ func (s *Service) MergePR(prID string) (*models.PullRequest, error) {
 		return nil, err
 	}
 	if pr == nil {
-		return nil, NewBusinessError(ErrorNotFound, "PR not found")
+		return nil, NewBusinessError(ErrorNotFound, "resource not found")
 	}
 
 	if pr.Status == "MERGED" {
