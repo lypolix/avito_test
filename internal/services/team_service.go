@@ -38,7 +38,7 @@ func (s *Service) GetTeam(teamName string) (*models.Team, error) {
 		return nil, err
 	}
 	if team == nil {
-		return nil, NewBusinessError(ErrorNotFound, "team not found")
+		return nil, NewBusinessError(ErrorNotFound, "resource not found")
 	}
 	return team, nil
 }

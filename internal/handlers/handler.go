@@ -48,7 +48,7 @@ func (h *Handler) handleError(c *gin.Context, err error) {
 func (h *Handler) getHTTPStatus(errorCode string) int {
 	switch errorCode {
 	case services.ErrorTeamExists, services.ErrorPRExists:
-		return http.StatusConflict
+		return http.StatusBadRequest
 	case services.ErrorNotFound:
 		return http.StatusNotFound
 	case services.ErrorPRMerged, services.ErrorNotAssigned, services.ErrorNoCandidate:

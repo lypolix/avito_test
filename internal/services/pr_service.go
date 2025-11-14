@@ -11,7 +11,7 @@ func (s *Service) CreatePR(prRequest *models.CreatePRRequest) (*models.PullReque
 		return nil, err
 	}
 	if exists {
-		return nil, NewBusinessError(ErrorPRExists, "PR already exists")
+		return nil, NewBusinessError(ErrorPRExists, "PR id already exists")
 	}
 
 	author, err := s.repo.GetUser(prRequest.AuthorID)
@@ -78,7 +78,7 @@ func (s *Service) ReassignReviewer(prID, oldUserID string) (*models.ReassignResp
 	}
 
 	if pr.Status == "MERGED" {
-		return nil, NewBusinessError(ErrorPRMerged, "merged PR")
+		return nil, NewBusinessError(ErrorPRMerged, "cannot reassign on merged PR")
 	}
 
 	if !contains(pr.AssignedReviewers, oldUserID) {

@@ -22,6 +22,14 @@ func (r *Repository) TeamExists(teamName string) (bool, error) {
 }
 
 func (r *Repository) GetTeam(teamName string) (*models.Team, error) {
+	exists, err := r.TeamExists(teamName)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, nil 
+	}
+
 	users, err := r.GetUsersByTeam(teamName)
 	if err != nil {
 		return nil, err
