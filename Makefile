@@ -5,17 +5,17 @@ BIN := ./bin/$(APP_NAME)
 PKG := ./...
 GO := go
 
-.PHONY: all tidy fmt lint build run test test-integration up down logs
+.PHONY: all tidy fmt lint build run test test-integration up down logs setup dev clean migrate-down
 
-all: tidy fmt lint build 
+all: setup tidy fmt lint build 
 
 setup:
 	@if [ ! -f .env ]; then \
 		echo "Creating .env file from .env.example..."; \
 		cp .env.example .env; \
-		echo "✅ .env file created. Please review the configuration if needed."; \
+		echo " .env file created. Please review the configuration if needed."; \
 	else \
-		echo "✅ .env file already exists"; \
+		echo " .env file already exists"; \
 	fi
 
 tidy:
@@ -44,13 +44,29 @@ test-integration: up
 	@$(MAKE) down
 
 up:
-	docker compose up -d --build
+	docker compose up -d --build	
 
 down:
+	docker compose down 
+
+down-clean:
 	docker compose down -v
 
 logs:
 	docker compose logs -f
 
+migrate-down:
+	docker compose run --rm migrations ./migrate -path ./migrations -database "${DATABASE_URL}" down 1
 
 dev: setup up logs
+
+dev-clean: setup down-clean up logs
+
+clean: down-clean
+	rm -rf ./bin
+
+status:
+	docker compose ps
+
+restart:
+	docker compose restart api

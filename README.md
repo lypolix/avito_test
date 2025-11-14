@@ -8,3 +8,25 @@ cp .env.example .env
 ```
 docker-compose up 
 ```
+
+
+
+## Доступ к базе данных (если нужно)
+
+### Подключиться к БД внутри контейнера
+
+```
+docker compose exec db psql -U avito_user -d avito_db
+```
+
+# Или пробросить порт временно
+
+```
+docker compose exec -it db 
+```
+
+затем внутри:
+
+```
+psql -U avito_user -d avito_db
+```
