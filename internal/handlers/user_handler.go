@@ -20,6 +20,16 @@ func (h *Handler) SetUserActive(c *gin.Context) {
 		return
 	}
 
+	if req.UserID == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: models.ErrorDetail{
+				Code:    "BAD_REQUEST",
+				Message: "user_id is required",
+			},
+		})
+		return
+	}
+
 	user, err := h.service.SetUserActive(req.UserID, req.IsActive)
 	if err != nil {
 		h.handleError(c, err)

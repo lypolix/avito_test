@@ -7,7 +7,7 @@ type CreateTeamRequest struct {
 
 type SetUserActiveRequest struct {
     UserID   string `json:"user_id" binding:"required"`
-    IsActive bool   `json:"is_active" binding:"required"`
+    IsActive bool   `json:"is_active"`
 }
 
 type CreatePRRequest struct {
