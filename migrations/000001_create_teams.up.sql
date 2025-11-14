@@ -1,0 +1,4 @@
+CREATE TABLE teams (
+    team_name VARCHAR(255) PRIMARY KEY,  
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
