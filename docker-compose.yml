@@ -9,8 +9,23 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     restart: unless-stopped
+    command: ["./server"]                 
 
+  migrations:
+    build: .
+    container_name: avito_migrations
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["./migrate", "-path", "./migrations", "-database", "${DATABASE_URL}", "up"]
+    profiles: ["migrate"]
+    restart: "no"
+      
   db:
     image: postgres:16-alpine
     container_name: avito_db
