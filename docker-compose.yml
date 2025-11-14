@@ -5,7 +5,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DB}
     depends_on:
       db:
         condition: service_healthy
@@ -18,11 +22,15 @@ services:
     build: .
     container_name: avito_migrations
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DB}
     depends_on:
       db:
         condition: service_healthy
-    command: ["./migrate", "-path", "./migrations", "-database", "${DATABASE_URL}", "up"] 
+    command: ["./migrate", "-path", "./migrations", "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable", "up"]
     restart: "no"
       
   db:

@@ -16,10 +16,14 @@ func NewHandler(service *services.Service) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) Run(addr string) error {
+func (h *Handler) SetupRoutes() *gin.Engine {
 	router := gin.Default()
 	h.setupRoutes(router)
-	return router.Run(addr)
+	return router
+}
+
+func (h *Handler) SetupRoutesWithRouter(router *gin.Engine) {
+	h.setupRoutes(router)
 }
 
 func (h *Handler) handleError(c *gin.Context, err error) {
