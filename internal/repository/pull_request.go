@@ -84,7 +84,7 @@ func (r *Repository) UpdatePRStatus(prID, status string) error {
 	
 	var mergedAt interface{}
 	if status == "MERGED" {
-		mergedAt = time.Now()
+		mergedAt = time.Now().UTC().Truncate(time.Second)
 	} else {
 		mergedAt = nil
 	}
