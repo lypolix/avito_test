@@ -16,7 +16,7 @@ services:
       migrations:
         condition: service_completed_successfully
     restart: unless-stopped
-    command: ["./server"]                 
+    command: ["./server"]
 
   migrations:
     build: .
@@ -32,7 +32,7 @@ services:
         condition: service_healthy
     command: ["./migrate", "-path", "./migrations", "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable", "up"]
     restart: "no"
-      
+
   db:
     image: postgres:16-alpine
     container_name: avito_db
@@ -49,5 +49,56 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  api_load:
+    build: .
+    container_name: avito_api_load
+    ports:
+      - "18080:8080"
+    environment:
+      - DB_HOST=db_load
+      - DB_PORT=5432
+      - DB_USER=${LOADTEST_USER}
+      - DB_PASSWORD=${LOADTEST_PASSWORD}
+      - DB_NAME=${LOADTEST_DB}
+    depends_on:
+      db_load:
+        condition: service_healthy
+      migrations_load:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    command: ["./server"]
+
+  migrations_load:
+    build: .
+    container_name: avito_migrations_load
+    environment:
+      - DB_HOST=db_load
+      - DB_PORT=5432
+      - DB_USER=${LOADTEST_USER}
+      - DB_PASSWORD=${LOADTEST_PASSWORD}
+      - DB_NAME=${LOADTEST_DB}
+    depends_on:
+      db_load:
+        condition: service_healthy
+    command: ["./migrate", "-path", "./migrations", "-database", "postgres://${LOADTEST_USER}:${LOADTEST_PASSWORD}@db_load:5432/${LOADTEST_DB}?sslmode=disable", "up"]
+    restart: "no"
+
+  db_load:
+    image: postgres:16-alpine
+    container_name: avito_db_load
+    environment:
+      - POSTGRES_USER=${LOADTEST_USER}
+      - POSTGRES_PASSWORD=${LOADTEST_PASSWORD}
+      - POSTGRES_DB=${LOADTEST_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOADTEST_USER} -d ${LOADTEST_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - postgres_data_load:/var/lib/postgresql/data
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  postgres_data_load:
