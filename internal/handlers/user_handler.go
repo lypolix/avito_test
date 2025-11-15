@@ -39,6 +39,39 @@ func (h *Handler) SetUserActive(c *gin.Context) {
 	c.JSON(http.StatusOK, models.UserResponse{User: user})
 }
 
+func (h *Handler) BulkDeactivateUsers(c *gin.Context) {
+    var req models.BulkDeactivateRequest
+
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, models.ErrorResponse{
+            Error: models.ErrorDetail{
+                Code:    "BAD_REQUEST",
+                Message: "Invalid request body",
+            },
+        })
+        return
+    }
+
+    if req.TeamName == "" || len(req.UserIDs) == 0 {
+        c.JSON(http.StatusBadRequest, models.ErrorResponse{
+            Error: models.ErrorDetail{
+                Code:    "BAD_REQUEST",
+                Message: "team_name and user_ids are required",
+            },
+        })
+        return
+    }
+
+    response, err := h.service.BulkDeactivateUsers(req.TeamName, req.UserIDs)
+    if err != nil {
+        h.handleError(c, err)
+        return
+    }
+
+    c.JSON(http.StatusOK, response)
+}
+
+
 func (h *Handler) GetUserPRs(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {

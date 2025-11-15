@@ -125,6 +125,22 @@ func (r *Repository) UpdatePRReviewers(prID string, reviewers []string) error {
 	return tx.Commit()
 }
 
+func (r *Repository) UpdatePRReviewersInTx(tx *sql.Tx, prID string, reviewers []string) error {
+	_, err := tx.Exec("DELETE FROM pr_reviewers WHERE pr_id = $1", prID)
+	if err != nil {
+		return err
+	}
+
+	for _, reviewerID := range reviewers {
+		_, err = tx.Exec("INSERT INTO pr_reviewers (pr_id, user_id) VALUES ($1, $2)", prID, reviewerID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *Repository) GetPRsByReviewer(userID string) ([]models.PullRequestShort, error) {
 	query := `
 		SELECT pr.pull_request_id, pr.pull_request_name, pr.author_id, pr.status
@@ -147,5 +163,41 @@ func (r *Repository) GetPRsByReviewer(userID string) ([]models.PullRequestShort,
 		}
 		prs = append(prs, pr)
 	}
+	return prs, nil
+}
+
+func (r *Repository) GetAllOpenPRs() ([]*models.PullRequest, error) {
+	query := `SELECT pull_request_id, pull_request_name, author_id, status, created_at, merged_at 
+	          FROM pull_requests WHERE status = 'OPEN'`
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var prs []*models.PullRequest
+	for rows.Next() {
+		var pr models.PullRequest
+		var mergedAt sql.NullTime
+		if err := rows.Scan(
+			&pr.PullRequestID, &pr.PullRequestName, &pr.AuthorID, &pr.Status, 
+			&pr.CreatedAt, &mergedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		if mergedAt.Valid {
+			pr.MergedAt = &mergedAt.Time
+		}
+
+		reviewers, err := r.GetPRReviewers(pr.PullRequestID)
+		if err != nil {
+			return nil, err
+		}
+		pr.AssignedReviewers = reviewers
+
+		prs = append(prs, &pr)
+	}
+
 	return prs, nil
 }

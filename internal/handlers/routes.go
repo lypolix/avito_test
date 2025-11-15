@@ -7,6 +7,7 @@ func (h *Handler) setupRoutes(router *gin.Engine) {
 	router.GET("/team/get", h.GetTeam)
 
 	router.POST("/users/setIsActive", h.SetUserActive)
+	router.POST("/users/bulkDeactivate", h.BulkDeactivateUsers)
 	router.GET("/users/getReview", h.GetUserPRs)
 
 	router.POST("/pullRequest/create", h.CreatePR)

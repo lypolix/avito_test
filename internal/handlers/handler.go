@@ -51,6 +51,8 @@ func (h *Handler) getHTTPStatus(errorCode string) int {
 		return http.StatusBadRequest
 	case services.ErrorNotFound:
 		return http.StatusNotFound
+	case services.ErrorInvalidTeam, services.ErrorUserInOtherTeam: 
+        return http.StatusBadRequest
 	case services.ErrorPRMerged, services.ErrorNotAssigned, services.ErrorNoCandidate, services.ErrorPRExists:
 		return http.StatusConflict
 	default:

@@ -10,6 +10,11 @@ type SetUserActiveRequest struct {
     IsActive bool   `json:"is_active"`
 }
 
+type BulkDeactivateRequest struct {
+    TeamName string   `json:"team_name" binding:"required"`
+    UserIDs  []string `json:"user_ids" binding:"required"`
+}
+
 type CreatePRRequest struct {
     PullRequestID   string `json:"pull_request_id" binding:"required"`
     PullRequestName string `json:"pull_request_name" binding:"required"`

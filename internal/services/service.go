@@ -12,6 +12,8 @@ const (
 	ErrorNotAssigned  = "NOT_ASSIGNED"
 	ErrorNoCandidate  = "NO_CANDIDATE"
 	ErrorNotFound     = "NOT_FOUND"
+	ErrorInvalidTeam  = "INVALID_TEAM"
+	ErrorUserInOtherTeam = "USER_IN_OTHER_TEAM"
 )
 
 type Service struct {
