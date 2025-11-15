@@ -53,3 +53,35 @@ type FailedReassignment struct {
     OldUserID     string `json:"old_user_id"`
     Reason        string `json:"reason"`
 }
+
+type StatsResponse struct {
+    UserStats []UserStat `json:"user_stats"`
+    PRStats   []PRStat   `json:"pr_stats"`
+    Summary   StatsSummary `json:"summary"`
+}
+
+type UserStat struct {
+    UserID    string `json:"user_id"`
+    Username  string `json:"username"`
+    TeamName  string `json:"team_name"`
+    IsActive  bool   `json:"is_active"`
+    AssignmentsCount int `json:"assignments_count"`
+}
+
+type PRStat struct {
+    PullRequestID   string `json:"pull_request_id"`
+    PullRequestName string `json:"pull_request_name"`
+    AuthorID        string `json:"author_id"`
+    Status          string `json:"status"`
+    ReviewersCount  int    `json:"reviewers_count"`
+    TeamName        string `json:"team_name,omitempty"`
+}
+
+type StatsSummary struct {
+    TotalUsers       int `json:"total_users"`
+    TotalPRs         int `json:"total_prs"`
+    TotalAssignments int `json:"total_assignments"`
+    AvgReviewersPerPR float64 `json:"avg_reviewers_per_pr"`
+    MostActiveUser   string `json:"most_active_user,omitempty"`
+    MostReviewedPR   string `json:"most_reviewed_pr,omitempty"`
+}

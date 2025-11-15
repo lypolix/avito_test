@@ -1,6 +1,7 @@
 package services
 
 import (
+
 	"github.com/lypolix/avito_test/internal/repository"
 )
 
@@ -23,6 +24,7 @@ type Service struct {
 func NewService(repo *repository.Repository) *Service {
 	return &Service{repo: repo}
 }
+
 
 type BusinessError struct {
 	Code    string

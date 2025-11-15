@@ -14,5 +14,7 @@ func (h *Handler) setupRoutes(router *gin.Engine) {
 	router.POST("/pullRequest/merge", h.MergePR)
 	router.POST("/pullRequest/reassign", h.ReassignReviewer)
 
+	router.GET("/stats", h.GetStats)
+
 	router.GET("/health", h.HealthCheck)
 }
