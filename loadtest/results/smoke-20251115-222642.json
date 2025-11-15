@@ -1,0 +1,25 @@
+{
+  "requests": 600,
+  "errors": 0,
+  "p50_ms": 7.041825,
+  "p95_ms": 26.791326,
+  "p99_ms": 188.44722,
+  "avg_ms": 19.848487546666693,
+  "max_ms": 1493.6975430000002,
+  "min_ms": 0.662932,
+  "start_at": "2025-11-15T22:26:42+03:00",
+  "profile": "smoke",
+  "base_url": "http://localhost:18080",
+  "by_path": {
+    "/health": {
+      "2xx": 300,
+      "4xx": 0,
+      "5xx": 0
+    },
+    "/pullRequest/create": {
+      "2xx": 300,
+      "4xx": 0,
+      "5xx": 0
+    }
+  }
+}

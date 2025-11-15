@@ -19,27 +19,36 @@ import (
 )
 
 type Config struct {
-	BaseURL     string
-	Profile     string
-	Duration    time.Duration
-	VUs         int
-	RPS         int
-	ResultsDir  string
-	HTTPTimeout time.Duration
+	BaseURL        string
+	Profile        string
+	Duration       time.Duration
+	Warmup         time.Duration
+	VUs            int
+	RPS            int
+	ResultsDir     string
+	HTTPTimeout    time.Duration
+	Count4xxAsErrs bool
 }
 
 type Result struct {
-	Requests int64   `json:"requests"`
-	Errors   int64   `json:"errors"`
-	P50      float64 `json:"p50_ms"`
-	P95      float64 `json:"p95_ms"`
-	P99      float64 `json:"p99_ms"`
-	Avg      float64 `json:"avg_ms"`
-	Max      float64 `json:"max_ms"`
-	Min      float64 `json:"min_ms"`
-	StartAt  string  `json:"start_at"`
-	Profile  string  `json:"profile"`
-	BaseURL  string  `json:"base_url"`
+	Requests int64              `json:"requests"`
+	Errors   int64              `json:"errors"`
+	P50      float64            `json:"p50_ms"`
+	P95      float64            `json:"p95_ms"`
+	P99      float64            `json:"p99_ms"`
+	Avg      float64            `json:"avg_ms"`
+	Max      float64            `json:"max_ms"`
+	Min      float64            `json:"min_ms"`
+	StartAt  string             `json:"start_at"`
+	Profile  string             `json:"profile"`
+	BaseURL  string             `json:"base_url"`
+	ByPath   map[string]ByClass `json:"by_path"`
+}
+
+type ByClass struct {
+	Code2xx int `json:"2xx"`
+	Code4xx int `json:"4xx"`
+	Code5xx int `json:"5xx"`
 }
 
 type Timer struct {
@@ -74,7 +83,15 @@ func (t *Timer) Summary() (p50, p95, p99, avg, min, max float64) {
 	}
 	cp := make([]float64, n)
 	copy(cp, t.vals)
-	quickSelect(cp)
+	for i := 1; i < len(cp); i++ {
+		k := cp[i]
+		j := i - 1
+		for j >= 0 && cp[j] > k {
+			cp[j+1] = cp[j]
+			j--
+		}
+		cp[j+1] = k
+	}
 	get := func(p float64) float64 {
 		idx := int(float64(n-1) * p)
 		if idx < 0 {
@@ -90,18 +107,6 @@ func (t *Timer) Summary() (p50, p95, p99, avg, min, max float64) {
 	p99 = get(0.99)
 	avg = t.sum / float64(n)
 	return p50, p95, p99, avg, t.min, t.max
-}
-
-func quickSelect(a []float64) {
-	for i := 1; i < len(a); i++ {
-		k := a[i]
-		j := i - 1
-		for j >= 0 && a[j] > k {
-			a[j+1] = a[j]
-			j--
-		}
-		a[j+1] = k
-	}
 }
 
 type clientPool struct {
@@ -134,10 +139,10 @@ func main() {
 		fmt.Printf("ERROR cannot create results dir: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("INFO start profile=%s vus=%d rps=%d duration=%s base=%s\n",
-		cfg.Profile, cfg.VUs, cfg.RPS, cfg.Duration, cfg.BaseURL)
+	fmt.Printf("INFO start profile=%s vus=%d rps=%d warmup=%s duration=%s base=%s\n",
+		cfg.Profile, cfg.VUs, cfg.RPS, cfg.Warmup, cfg.Duration, cfg.BaseURL)
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Duration)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Warmup+cfg.Duration)
 	defer cancel()
 
 	cl := newClient(cfg.HTTPTimeout)
@@ -145,19 +150,73 @@ func main() {
 	var totalReq, totalErr int64
 	timer := NewTimer()
 
+	stats := struct {
+		mu   sync.Mutex
+		data map[string]ByClass
+	}{data: make(map[string]ByClass)}
+
+	var collect atomic.Bool
+
+	go func() {
+		if cfg.Warmup > 0 {
+			time.Sleep(cfg.Warmup)
+		}
+		collect.Store(true)
+	}()
+
+	call := func(method, path string, body any) ([]byte, int, error) {
+		start := time.Now()
+		b, code, err := doJSON(cl.c, method, cfg.BaseURL+path, body)
+		elapsed := time.Since(start).Seconds() * 1000
+		if collect.Load() {
+			timer.Add(elapsed)
+			atomic.AddInt64(&totalReq, 1)
+			class := classify(code, err)
+			stats.mu.Lock()
+			s := stats.data[path]
+			switch class {
+			case 2:
+				s.Code2xx++
+			case 4:
+				s.Code4xx++
+			case 5:
+				s.Code5xx++
+			}
+			stats.data[path] = s
+			stats.mu.Unlock()
+			if cfg.Count4xxAsErrs {
+				if err != nil || code >= 400 {
+					atomic.AddInt64(&totalErr, 1)
+				}
+			} else {
+				if err != nil || code >= 500 {
+					atomic.AddInt64(&totalErr, 1)
+				}
+			}
+		}
+		return b, code, err
+	}
+
 	switch cfg.Profile {
 	case "smoke":
-		runSmoke(ctx, cl, cfg, &totalReq, &totalErr, timer)
+		runSmoke(ctx, call, cfg)
 	case "baseline":
-		runBaseline(ctx, cl, cfg, &totalReq, &totalErr, timer)
+		runBaseline(ctx, call, cfg)
 	case "mass":
-		runMass(ctx, cl, cfg, &totalReq, &totalErr, timer)
+		runMass(ctx, call, cfg)
 	default:
 		fmt.Printf("WARN unknown profile\n")
-		runSmoke(ctx, cl, cfg, &totalReq, &totalErr, timer)
+		runSmoke(ctx, call, cfg)
 	}
 
 	p50, p95, p99, avg, min, max := timer.Summary()
+	byPath := make(map[string]ByClass)
+	stats.mu.Lock()
+	for k, v := range stats.data {
+		byPath[k] = v
+	}
+	stats.mu.Unlock()
+
 	res := Result{
 		Requests: totalReq,
 		Errors:   totalErr,
@@ -170,6 +229,7 @@ func main() {
 		StartAt:  time.Now().Format(time.RFC3339),
 		Profile:  cfg.Profile,
 		BaseURL:  cfg.BaseURL,
+		ByPath:   byPath,
 	}
 	out := filepath.Join(cfg.ResultsDir, fmt.Sprintf("%s-%s.json", cfg.Profile, time.Now().Format("20060102-150405")))
 	if err := writeJSON(out, res); err != nil {
@@ -177,19 +237,23 @@ func main() {
 	} else {
 		fmt.Printf("INFO results saved: %s\n", out)
 	}
-	fmt.Printf("INFO p95=%.1fms p99=%.1fms err_rate=%.4f reqs=%d\n",
-		res.P95, res.P99, rate(totalErr, totalReq), totalReq)
+	errRate := rate(totalErr, totalReq)
+	fmt.Printf("INFO p95=%.1fms p99=%.1fms err_rate=%.4f reqs=%d\n", res.P95, res.P99, errRate, res.Requests)
+	printByPath(byPath)
 }
 
 func parseFlags() Config {
-	var base, profile, duration, out string
+	var base, profile, duration, warmup, out string
 	var vus, rps int
-	flag.StringVar(&base, "base", "http://localhost:8080", "base URL")
-	flag.StringVar(&profile, "profile", "smoke", "profile: smoke|baseline|mass")
-	flag.StringVar(&duration, "duration", "1m", "duration (e.g. 1m,5m)")
+	var count4xx bool
+	flag.StringVar(&base, "base", "http://localhost:18080", "base URL")
+	flag.StringVar(&profile, "profile", "baseline", "profile: smoke|baseline|mass")
+	flag.StringVar(&duration, "duration", "3m", "main duration (e.g. 1m,5m)")
+	flag.StringVar(&warmup, "warmup", "20s", "warmup period (excluded from metrics)")
 	flag.StringVar(&out, "out", "loadtest/results", "results dir")
-	flag.IntVar(&vus, "vus", 5, "virtual users (goroutines)")
+	flag.IntVar(&vus, "vus", 10, "virtual users (goroutines)")
 	flag.IntVar(&rps, "rps", 5, "max requests per second overall")
+	flag.BoolVar(&count4xx, "count4xx", false, "count 4xx as errors in SLI")
 	flag.Parse()
 
 	dur, err := time.ParseDuration(duration)
@@ -197,15 +261,22 @@ func parseFlags() Config {
 		fmt.Printf("ERROR invalid duration: %v\n", err)
 		os.Exit(1)
 	}
+	wu, err := time.ParseDuration(warmup)
+	if err != nil {
+		fmt.Printf("ERROR invalid warmup: %v\n", err)
+		os.Exit(1)
+	}
 
 	return Config{
-		BaseURL:     strings.TrimRight(base, "/"),
-		Profile:     profile,
-		Duration:    dur,
-		VUs:         vus,
-		RPS:         rps,
-		ResultsDir:  out,
-		HTTPTimeout: 5 * time.Second,
+		BaseURL:        strings.TrimRight(base, "/"),
+		Profile:        profile,
+		Duration:       dur,
+		Warmup:         wu,
+		VUs:            vus,
+		RPS:            rps,
+		ResultsDir:     out,
+		HTTPTimeout:    5 * time.Second,
+		Count4xxAsErrs: count4xx,
 	}
 }
 
@@ -236,7 +307,7 @@ func throttle(rps int) <-chan time.Time {
 	return time.NewTicker(time.Second / time.Duration(rps)).C
 }
 
-func doJSON(c *http.Client, method, url string, body any, timer *Timer, totalReq, totalErr *int64) ([]byte, int, error) {
+func doJSON(c *http.Client, method, url string, body any) ([]byte, int, error) {
 	var buf io.Reader
 	if body != nil {
 		b, _ := json.Marshal(body)
@@ -244,137 +315,159 @@ func doJSON(c *http.Client, method, url string, body any, timer *Timer, totalReq
 	}
 	req, err := http.NewRequest(method, url, buf)
 	if err != nil {
-		atomic.AddInt64(totalErr, 1)
 		return nil, 0, err
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-
-	start := time.Now()
 	resp, err := c.Do(req)
-	elapsed := time.Since(start).Seconds() * 1000
-	timer.Add(elapsed)
-	atomic.AddInt64(totalReq, 1)
-
 	if err != nil {
-		atomic.AddInt64(totalErr, 1)
 		return nil, 0, err
 	}
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		atomic.AddInt64(totalErr, 1)
-	}
 	return data, resp.StatusCode, nil
 }
 
+func classify(code int, err error) int {
+	if err != nil {
+		return 5
+	}
+	switch {
+	case code >= 500:
+		return 5
+	case code >= 400:
+		return 4
+	default:
+		return 2
+	}
+}
 
-func runSmoke(ctx context.Context, pool *clientPool, cfg Config, tr *int64, te *int64, timer *Timer) {
+func printByPath(m map[string]ByClass) {
+	if len(m) == 0 {
+		return
+	}
+	fmt.Println("INFO per-path status summary:")
+	for p, s := range m {
+		fmt.Printf("  %s -> 2xx=%d 4xx=%d 5xx=%d\n", p, s.Code2xx, s.Code4xx, s.Code5xx)
+	}
+}
+
+func runSmoke(ctx context.Context, call func(method, path string, body any) ([]byte, int, error), cfg Config) {
 	fmt.Println("INFO smoke start")
-	seedTeam(pool.c, cfg.BaseURL, "smoke", []member{
+	seedTeam(call, "smoke", []member{
 		{ID: "u1", Name: "Alice", Active: true},
 	})
 	runWorkers(ctx, cfg, func(rng *rand.Rand) {
-		_, _, _ = doJSON(pool.c, http.MethodGet, cfg.BaseURL+"/health", nil, timer, tr, te)
-		_, _, _ = doJSON(pool.c, http.MethodPost, cfg.BaseURL+"/pullRequest/create",
-			map[string]any{
-				"pull_request_id":   fmt.Sprintf("sm-%d", rng.Int()),
-				"pull_request_name": "Test",
-				"author_id":         "u1",
-			},
-			timer, tr, te,
-		)
+		_, _, _ = call(http.MethodGet, "/health", nil)
+		_, _, _ = call(http.MethodPost, "/pullRequest/create", map[string]any{
+			"pull_request_id":   fmt.Sprintf("sm-%d", rng.Int()),
+			"pull_request_name": "Test",
+			"author_id":         "u1",
+		})
 	})
 }
 
 type ringBuffer struct {
-	ids []string
+	ids map[string]struct{}
 	mu  sync.Mutex
 }
 
+func newRing() *ringBuffer { return &ringBuffer{ids: make(map[string]struct{}, 64)} }
 func (r *ringBuffer) pick(rng *rand.Rand) string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if len(r.ids) == 0 {
+	n := len(r.ids)
+	if n == 0 {
 		return ""
 	}
-	return r.ids[rng.Intn(len(r.ids))]
+	idx := rng.Intn(n)
+	i := 0
+	for id := range r.ids {
+		if i == idx {
+			return id
+		}
+		i++
+	}
+	return ""
 }
-
-func (r *ringBuffer) add(id string, rng *rand.Rand) {
+func (r *ringBuffer) add(id string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if len(r.ids) < 64 {
-		r.ids = append(r.ids, id)
-	} else {
-		r.ids[rng.Intn(len(r.ids))] = id
+	if len(r.ids) >= 64 {
+		for k := range r.ids {
+			delete(r.ids, k)
+			break
+		}
 	}
+	r.ids[id] = struct{}{}
+}
+func (r *ringBuffer) remove(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.ids, id)
 }
 
-func runBaseline(ctx context.Context, pool *clientPool, cfg Config, tr *int64, te *int64, timer *Timer) {
+func runBaseline(ctx context.Context, call func(method, path string, body any) ([]byte, int, error), cfg Config) {
 	fmt.Println("INFO baseline start")
-	seedTeam(pool.c, cfg.BaseURL, "baseline", []member{
+	seedTeam(call, "baseline", []member{
 		{ID: "u1", Name: "Alice", Active: true},
 		{ID: "u2", Name: "Bob", Active: true},
 		{ID: "u3", Name: "Carol", Active: true},
 	})
-
-	buf := &ringBuffer{ids: make([]string, 0, 64)}
+	buf := newRing()
 
 	runWorkers(ctx, cfg, func(rng *rand.Rand) {
 		switch r := rng.Intn(100); {
 		case r < 40:
 			id := fmt.Sprintf("b-%d-%d", rng.Intn(10_000), rng.Intn(10_000))
-			_, _, _ = doJSON(pool.c, http.MethodPost, cfg.BaseURL+"/pullRequest/create",
-				map[string]any{
-					"pull_request_id":   id,
-					"pull_request_name": "Feat",
-					"author_id":         "u1",
-				}, timer, tr, te)
-			buf.add(id, rng)
+			_, _, _ = call(http.MethodPost, "/pullRequest/create", map[string]any{
+				"pull_request_id":   id,
+				"pull_request_name": "Feat",
+				"author_id":         "u1",
+			})
+			buf.add(id)
 		case r < 70:
-			_, _, _ = doJSON(pool.c, http.MethodGet, cfg.BaseURL+"/users/getReview?user_id=u2", nil, timer, tr, te)
+			_, _, _ = call(http.MethodGet, "/users/getReview?user_id=u2", nil)
 		case r < 90:
 			id := buf.pick(rng)
 			if id != "" {
-				_, _, _ = doJSON(pool.c, http.MethodPost, cfg.BaseURL+"/pullRequest/reassign",
-					map[string]any{
-						"pull_request_id": id,
-						"old_user_id":     "u2",
-					}, timer, tr, te)
+				_, _, _ = call(http.MethodPost, "/pullRequest/reassign", map[string]any{
+					"pull_request_id": id,
+					"old_user_id":     "u2",
+				})
 			}
 		default:
 			id := buf.pick(rng)
 			if id != "" {
-				_, _, _ = doJSON(pool.c, http.MethodPost, cfg.BaseURL+"/pullRequest/merge",
-					map[string]any{
-						"pull_request_id": id,
-					}, timer, tr, te)
+				_, code, _ := call(http.MethodPost, "/pullRequest/merge", map[string]any{
+					"pull_request_id": id,
+				})
+				if code >= 200 && code < 300 {
+					buf.remove(id)
+				}
 			}
 		}
 	})
 }
 
-func runMass(ctx context.Context, pool *clientPool, cfg Config, tr *int64, te *int64, timer *Timer) {
+func runMass(ctx context.Context, call func(method, path string, body any) ([]byte, int, error), cfg Config) {
 	fmt.Println("INFO mass start")
-	seedTeam(pool.c, cfg.BaseURL, "ops", []member{
+	seedTeam(call, "ops", []member{
 		{ID: "u1", Name: "Alice", Active: true},
 		{ID: "u2", Name: "Bob", Active: true},
 		{ID: "u3", Name: "Carol", Active: true},
 		{ID: "u4", Name: "Dave", Active: true},
 	})
 	for i := 0; i < 10; i++ {
-		_, _, _ = doJSON(pool.c, http.MethodPost, cfg.BaseURL+"/pullRequest/create",
-			map[string]any{
-				"pull_request_id":   fmt.Sprintf("ops-%d", i),
-				"pull_request_name": "Chore",
-				"author_id":         "u1",
-			}, timer, tr, te)
+		_, _, _ = call(http.MethodPost, "/pullRequest/create", map[string]any{
+			"pull_request_id":   fmt.Sprintf("ops-%d", i),
+			"pull_request_name": "Chore",
+			"author_id":         "u1",
+		})
 	}
-
 	runWorkers(ctx, cfg, func(rng *rand.Rand) {
-		_, _, _ = doJSON(pool.c, http.MethodGet, cfg.BaseURL+"/users/getReview?user_id=u2", nil, timer, tr, te)
+		_, _, _ = call(http.MethodGet, "/users/getReview?user_id=u2", nil)
 		if rng.Intn(100) < 10 {
 			var payload any
 			if rng.Intn(2) == 0 {
@@ -382,11 +475,10 @@ func runMass(ctx context.Context, pool *clientPool, cfg Config, tr *int64, te *i
 			} else {
 				payload = map[string]any{"team_name": "ops", "user_ids": []string{"u4"}}
 			}
-			_, _, _ = doJSON(pool.c, http.MethodPost, cfg.BaseURL+"/users/bulkDeactivate", payload, timer, tr, te)
+			_, _, _ = call(http.MethodPost, "/users/bulkDeactivate", payload)
 		}
 	})
 }
-
 
 func runWorkers(ctx context.Context, cfg Config, work func(rng *rand.Rand)) {
 	var wg sync.WaitGroup
@@ -410,14 +502,13 @@ func runWorkers(ctx context.Context, cfg Config, work func(rng *rand.Rand)) {
 	wg.Wait()
 }
 
-
 type member struct {
 	ID     string
 	Name   string
 	Active bool
 }
 
-func seedTeam(c *http.Client, base, team string, members []member) {
+func seedTeam(call func(method, path string, body any) ([]byte, int, error), team string, members []member) {
 	type m struct {
 		UserID   string `json:"user_id"`
 		Username string `json:"username"`
@@ -426,14 +517,12 @@ func seedTeam(c *http.Client, base, team string, members []member) {
 	body := struct {
 		TeamName string `json:"team_name"`
 		Members  []m    `json:"members"`
-	}{
-		TeamName: team,
-	}
+	}{TeamName: team}
 	for _, x := range members {
 		body.Members = append(body.Members, m{UserID: x.ID, Username: x.Name, IsActive: x.Active})
 	}
-	_, code, _ := doJSON(c, http.MethodPost, base+"/team/add", body, NewTimer(), new(int64), new(int64))
+	_, code, _ := call(http.MethodPost, "/team/add", body)
 	if code != http.StatusCreated && code != http.StatusBadRequest {
-		fmt.Printf("WARN failed code=%d\n", code)
+		fmt.Printf("WARN seed team failed code=%d\n", code)
 	}
 }

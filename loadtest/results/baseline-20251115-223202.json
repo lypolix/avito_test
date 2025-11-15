@@ -1,0 +1,35 @@
+{
+  "requests": 1500,
+  "errors": 0,
+  "p50_ms": 12.167972,
+  "p95_ms": 31.888153000000003,
+  "p99_ms": 51.77329,
+  "avg_ms": 17.210645135333355,
+  "max_ms": 1092.528667,
+  "min_ms": 2.0295769999999997,
+  "start_at": "2025-11-15T22:32:02+03:00",
+  "profile": "baseline",
+  "base_url": "http://localhost:18080",
+  "by_path": {
+    "/pullRequest/create": {
+      "2xx": 587,
+      "4xx": 0,
+      "5xx": 0
+    },
+    "/pullRequest/merge": {
+      "2xx": 132,
+      "4xx": 0,
+      "5xx": 0
+    },
+    "/pullRequest/reassign": {
+      "2xx": 0,
+      "4xx": 317,
+      "5xx": 0
+    },
+    "/users/getReview?user_id=u2": {
+      "2xx": 464,
+      "4xx": 0,
+      "5xx": 0
+    }
+  }
+}

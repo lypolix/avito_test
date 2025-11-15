@@ -1,0 +1,25 @@
+{
+  "requests": 1638,
+  "errors": 0,
+  "p50_ms": 19.894935999999998,
+  "p95_ms": 43.828720000000004,
+  "p99_ms": 59.557781999999996,
+  "avg_ms": 21.731263617826603,
+  "max_ms": 175.359892,
+  "min_ms": 1.337614,
+  "start_at": "2025-11-15T22:37:23+03:00",
+  "profile": "mass",
+  "base_url": "http://localhost:18080",
+  "by_path": {
+    "/users/bulkDeactivate": {
+      "2xx": 0,
+      "4xx": 138,
+      "5xx": 0
+    },
+    "/users/getReview?user_id=u2": {
+      "2xx": 1500,
+      "4xx": 0,
+      "5xx": 0
+    }
+  }
+}
