@@ -225,10 +225,16 @@ HTTP статус-коды корректны
 
 ### Для docker compose:
 
+Поменяйте в Makefile строку
+
 ```
-make up
+DOCKER_COMPOSE ?= docker compose
+``` 
+затем:
 ```
-или 
+make up 
+```
+или (скопируте .env.example в .env) и выполните:
 ```
 docker compose up -d --build
 ```
@@ -236,9 +242,9 @@ docker compose up -d --build
 ### Для docker-compose:
 
 ```
-make compose-up  
+make up  
 ```
-или
+или (скопируте .env.example в .env) и выполните:
 ```
 docker-compose up -d --build
 ```
@@ -248,20 +254,18 @@ docker-compose up -d --build
 cp .env.example .env
 ```
 
-**В остальных командах запуска в Makefile использую docker compose (как более современный)**
-
 ## Доступ к базе данных (если нужно)
 
 ### Подключиться к БД внутри контейнера
 
 ```
-docker compose exec db psql -U avito_user -d avito_db
+docker compose exec db psql -U avito_user -d avito_db (docker-compose exec db psql -U avito_user -d avito_db)
 ```
 
 ### Или пробросить порт временно
 
 ```
-docker compose exec -it db 
+docker compose exec -it db (docker-compose exec -it db )
 ```
 
 затем внутри:
@@ -386,6 +390,3 @@ make lint
 - Исключается конфликт интересов.  
 - Повышается корректность и прозрачность ревью.
 
---- 
-
-В моём Makefile используется docker compose

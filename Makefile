@@ -5,6 +5,9 @@ BIN := ./bin/$(APP_NAME)
 PKG := ./...
 GO := go
 
+# Docker Compose команда - ПОМЕНЯЙТЕ ЗДЕСЬ НА docker compose, если используете его 
+DOCKER_COMPOSE ?= docker-compose
+
 LOAD_BASE ?= http://localhost:18080
 LOAD_VUS ?= 10
 LOAD_RPS ?= 5
@@ -30,6 +33,7 @@ setup:
 		echo "Creating .env from .env.example"; \
 		cp .env.example .env; \
 	fi
+	@echo "Using Docker Compose command: $(DOCKER_COMPOSE)"
 
 build:
 	$(GO) build -o $(BIN) ./cmd/server
@@ -44,28 +48,25 @@ clean:
 	rm -rf ./bin
 
 up: setup
-	docker compose up -d --build
-
-compose-up: setup
-	docker-compose up -d --build
+	$(DOCKER_COMPOSE) up -d --build
 
 down:
-	docker compose down
+	$(DOCKER_COMPOSE) down
 
 logs:
-	docker compose logs -f
+	$(DOCKER_COMPOSE) logs -f
 
 status:
-	docker compose ps
+	$(DOCKER_COMPOSE) ps
 
 restart:
-	docker compose restart api
+	$(DOCKER_COMPOSE) restart api
 
 load-up:
-	docker compose up -d --build db_load migrations_load api_load
+	$(DOCKER_COMPOSE) up -d --build db_load migrations_load api_load
 
 load-down:
-	docker compose down --remove-orphans --timeout 10
+	$(DOCKER_COMPOSE) down --remove-orphans --timeout 10
 
 load-test-all: load-up
 	@echo "Running ALL load tests against $(LOAD_BASE)"
@@ -80,13 +81,13 @@ load-test-all: load-up
 
 test-db-up:
 	@echo "Starting test database..."
-	docker compose -f docker-compose.test.yml up -d db_test
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml up -d db_test
 	@echo "Waiting for database to be ready..."
-	docker compose -f docker-compose.test.yml up migrations_test
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml up migrations_test
 	@echo "Test database is ready"
 
 test-db-down:
-	docker compose -f docker-compose.test.yml down
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml down
 
 test-integration: test-db-up
 	@echo "Running Integration Tests"
@@ -125,6 +126,7 @@ dev-all: up load-up test-db-up
 	@echo "- App: http://localhost:8080"
 	@echo "- Load test: http://localhost:18080"
 	@echo "- Test DB: $(TEST_DB_HOST):$(TEST_DB_PORT)"
+	@echo "Using Docker Compose: $(DOCKER_COMPOSE)"
 
 down-all: down load-down test-db-down
 	@echo "All environments stopped"
@@ -141,3 +143,7 @@ tidy:
 
 code-check: tidy fmt lint
 	@echo "Code quality check passed"
+
+docker-compose-cmd:
+	@echo "Using: $(DOCKER_COMPOSE)"
+
