@@ -391,6 +391,7 @@ func (r *ringBuffer) pick(rng *rand.Rand) string {
 	}
 	return ""
 }
+
 func (r *ringBuffer) add(id string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -402,6 +403,7 @@ func (r *ringBuffer) add(id string) {
 	}
 	r.ids[id] = struct{}{}
 }
+
 func (r *ringBuffer) remove(id string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

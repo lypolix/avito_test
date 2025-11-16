@@ -1,19 +1,17 @@
 package services
 
 import (
-
 	"github.com/lypolix/avito_test/internal/repository"
 )
 
-
 const (
-	ErrorTeamExists   = "TEAM_EXISTS"
-	ErrorPRExists     = "PR_EXISTS"
-	ErrorPRMerged     = "PR_MERGED"
-	ErrorNotAssigned  = "NOT_ASSIGNED"
-	ErrorNoCandidate  = "NO_CANDIDATE"
-	ErrorNotFound     = "NOT_FOUND"
-	ErrorInvalidTeam  = "INVALID_TEAM"
+	ErrorTeamExists      = "TEAM_EXISTS"
+	ErrorPRExists        = "PR_EXISTS"
+	ErrorPRMerged        = "PR_MERGED"
+	ErrorNotAssigned     = "NOT_ASSIGNED"
+	ErrorNoCandidate     = "NO_CANDIDATE"
+	ErrorNotFound        = "NOT_FOUND"
+	ErrorInvalidTeam     = "INVALID_TEAM"
 	ErrorUserInOtherTeam = "USER_IN_OTHER_TEAM"
 )
 
@@ -24,7 +22,6 @@ type Service struct {
 func NewService(repo *repository.Repository) *Service {
 	return &Service{repo: repo}
 }
-
 
 type BusinessError struct {
 	Code    string

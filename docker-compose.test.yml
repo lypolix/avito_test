@@ -1,0 +1,61 @@
+services:
+  db_test:
+    image: postgres:16-alpine
+    container_name: avito_db_test
+    environment:
+      - POSTGRES_USER=${TEST_POSTGRES_USER:-test_user}
+      - POSTGRES_PASSWORD=${TEST_POSTGRES_PASSWORD:-test_pass}
+      - POSTGRES_DB=${TEST_POSTGRES_DB:-appdb_test}
+    ports:
+      - "${TEST_DB_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-test_user} -d ${TEST_POSTGRES_DB:-appdb_test}"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+    restart: "no"
+    networks:
+      - test_network
+
+  migrations_test:
+    build: .
+    container_name: avito_migrations_test
+    environment:
+      - DB_HOST=db_test
+      - DB_PORT=5432
+      - DB_USER=${TEST_POSTGRES_USER:-test_user}
+      - DB_PASSWORD=${TEST_POSTGRES_PASSWORD:-test_pass}
+      - DB_NAME=${TEST_POSTGRES_DB:-appdb_test}
+    depends_on:
+      db_test:
+        condition: service_healthy
+    command: ["./migrate", "-path", "./migrations", "-database", "postgres://${TEST_POSTGRES_USER:-test_user}:${TEST_POSTGRES_PASSWORD:-test_pass}@db_test:5432/${TEST_POSTGRES_DB:-appdb_test}?sslmode=disable", "up"]
+    restart: "no"
+    networks:
+      - test_network
+
+  app_test:
+    build: .
+    container_name: avito_api_test
+    environment:
+      - DB_HOST=db_test
+      - DB_PORT=5432
+      - DB_USER=${TEST_POSTGRES_USER:-test_user}
+      - DB_PASSWORD=${TEST_POSTGRES_PASSWORD:-test_pass}
+      - DB_NAME=${TEST_POSTGRES_DB:-appdb_test}
+      - SERVER_PORT=${TEST_SERVER_PORT:-8088}
+    depends_on:
+      db_test:
+        condition: service_healthy
+      migrations_test:
+        condition: service_completed_successfully
+    command: ["./server"]
+    ports:
+      - "18088:8088"
+    restart: "no"
+    networks:
+      - test_network
+
+networks:
+  test_network:
+    driver: bridge

@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"github.com/lypolix/avito_test/internal/models"
 	"database/sql"
+
+	"github.com/lypolix/avito_test/internal/models"
 )
 
 func (r *Repository) CreateTeam(teamName string) error {
@@ -27,7 +28,7 @@ func (r *Repository) GetTeam(teamName string) (*models.Team, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, nil 
+		return nil, nil
 	}
 
 	users, err := r.GetUsersByTeam(teamName)

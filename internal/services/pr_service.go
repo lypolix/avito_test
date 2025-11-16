@@ -27,10 +27,10 @@ func (s *Service) CreatePR(prRequest *models.CreatePRRequest) (*models.PullReque
 	}
 
 	pr := &models.PullRequest{
-		PullRequestID:    prRequest.PullRequestID,
-		PullRequestName:  prRequest.PullRequestName,
-		AuthorID:         prRequest.AuthorID,
-		Status:           "OPEN",
+		PullRequestID:     prRequest.PullRequestID,
+		PullRequestName:   prRequest.PullRequestName,
+		AuthorID:          prRequest.AuthorID,
+		Status:            "OPEN",
 		AssignedReviewers: reviewers,
 	}
 

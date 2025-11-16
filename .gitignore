@@ -8,3 +8,7 @@ bin/
 .DS_Store
 coverage.out
 *.log
+
+.golangci-cache/
+.golangci-output/
+

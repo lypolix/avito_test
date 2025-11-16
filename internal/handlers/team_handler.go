@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"github.com/lypolix/avito_test/internal/models"
 	"net/http"
+
+	"github.com/lypolix/avito_test/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

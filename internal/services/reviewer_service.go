@@ -44,9 +44,9 @@ func (s *Service) findReplacementReviewer(oldUserID string, currentReviewers []s
 
 	var candidates []string
 	for _, user := range teamUsers {
-		if user.UserID != oldUserID && 
-		   user.UserID != authorID && 
-		   !contains(currentReviewers, user.UserID) {
+		if user.UserID != oldUserID &&
+			user.UserID != authorID &&
+			!contains(currentReviewers, user.UserID) {
 			candidates = append(candidates, user.UserID)
 		}
 	}

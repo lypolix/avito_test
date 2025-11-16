@@ -1,9 +1,10 @@
 package repository
 
 import (
-	"github.com/lypolix/avito_test/internal/models"
 	"database/sql"
 	"time"
+
+	"github.com/lypolix/avito_test/internal/models"
 )
 
 func (r *Repository) CreatePR(pr *models.PullRequest) error {
@@ -37,7 +38,7 @@ func (r *Repository) GetPR(prID string) (*models.PullRequest, error) {
 	var pr models.PullRequest
 	var mergedAt sql.NullTime
 	err := r.db.QueryRow(query, prID).Scan(
-		&pr.PullRequestID, &pr.PullRequestName, &pr.AuthorID, &pr.Status, 
+		&pr.PullRequestID, &pr.PullRequestName, &pr.AuthorID, &pr.Status,
 		&pr.CreatedAt, &mergedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -81,7 +82,7 @@ func (r *Repository) GetPRReviewers(prID string) ([]string, error) {
 
 func (r *Repository) UpdatePRStatus(prID, status string) error {
 	query := `UPDATE pull_requests SET status = $1, merged_at = $2 WHERE pull_request_id = $3`
-	
+
 	var mergedAt interface{}
 	if status == "MERGED" {
 		mergedAt = time.Now().UTC().Truncate(time.Second)
@@ -154,7 +155,7 @@ func (r *Repository) GetPRsByReviewer(userID string) ([]models.PullRequestShort,
 		return nil, err
 	}
 	defer rows.Close()
-		
+
 	var prs []models.PullRequestShort
 	for rows.Next() {
 		var pr models.PullRequestShort
@@ -180,7 +181,7 @@ func (r *Repository) GetAllOpenPRs() ([]*models.PullRequest, error) {
 		var pr models.PullRequest
 		var mergedAt sql.NullTime
 		if err := rows.Scan(
-			&pr.PullRequestID, &pr.PullRequestName, &pr.AuthorID, &pr.Status, 
+			&pr.PullRequestID, &pr.PullRequestName, &pr.AuthorID, &pr.Status,
 			&pr.CreatedAt, &mergedAt,
 		); err != nil {
 			return nil, err

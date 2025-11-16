@@ -11,31 +11,25 @@ LOAD_RPS ?= 5
 LOAD_DURATION ?= 5m
 LOAD_RESULTS ?= loadtest/results
 
-.PHONY: all setup tidy fmt lint build run test \
-        up down down-clean logs migrate-down status restart dev dev-clean clean \
-        build-loadtest load-test load-test-smoke load-test-baseline load-test-mass load-test-all \
-        load-up load-down load-down-clean load-logs load-migrate-down load-restart \
-        docker-up load-run-all
+TEST_DB_HOST ?= localhost
+TEST_DB_PORT ?= 55432
+TEST_DB_USER ?= test_user
+TEST_DB_PASSWORD ?= test_pass
+TEST_DB_NAME ?= appdb_test
 
-all: setup tidy fmt lint build
+.PHONY: all setup build run test clean \
+        up down logs status restart \
+        load-up load-down load-test-all \
+        test-db-up test-db-down \
+        test-unit test-integration test-e2e test-all
+
+all: setup build
 
 setup:
 	@if [ ! -f .env ]; then \
 		echo "Creating .env from .env.example"; \
 		cp .env.example .env; \
-	else \
-		echo ".env already exists"; \
 	fi
-
-tidy:
-	$(GO) mod tidy
-
-fmt:
-	@gofumpt -w .
-	@goimports -w .
-
-lint:
-	@golangci-lint run --timeout=3m
 
 build:
 	$(GO) build -o $(BIN) ./cmd/server
@@ -55,14 +49,8 @@ up:
 down:
 	docker compose down
 
-down-clean:
-	docker compose down -v
-
 logs:
 	docker compose logs -f
-
-migrate-down:
-	docker compose run --rm migrations ./migrate -path ./migrations -database "$${DATABASE_URL}" down 1
 
 status:
 	docker compose ps
@@ -70,56 +58,77 @@ status:
 restart:
 	docker compose restart api
 
-dev: setup up logs
-dev-clean: setup down-clean up logs
-
 load-up:
 	docker compose up -d --build db_load migrations_load api_load
 
 load-down:
 	docker compose down --remove-orphans --timeout 10
 
-load-down-clean:
-	docker compose down -v --remove-orphans --timeout 10
-
-load-logs:
-	docker compose logs -f api_load db_load migrations_load
-
-load-migrate-down:
-	docker compose run --rm migrations_load ./migrate -path ./migrations -database "$${LOAD_DATABASE_URL}" down 1
-
-load-restart:
-	docker compose restart api_load
-
-docker-up: up load-up
-
-build-loadtest:
-	$(GO) build -o bin/loadtest ./cmd/loadtest
-
-load-test: build-loadtest
+load-test-all: load-up
+	@echo "Running load tests against $(LOAD_BASE)"
 	@mkdir -p $(LOAD_RESULTS)
-	./bin/loadtest -base $(LOAD_BASE) -profile $(LOAD_PROFILE) -vus $(LOAD_VUS) -rps $(LOAD_RPS) -duration $(LOAD_DURATION) -out $(LOAD_RESULTS)
+	$(GO) run ./cmd/loadtest -base $(LOAD_BASE) -profile baseline -vus $(LOAD_VUS) -rps $(LOAD_RPS) -duration $(LOAD_DURATION) -out $(LOAD_RESULTS)
 
-load-test-smoke: build-loadtest
-	@mkdir -p $(LOAD_RESULTS)
-	./bin/loadtest -base $(LOAD_BASE) -profile smoke -vus $(LOAD_VUS) -rps $(LOAD_RPS) -duration 1m -out $(LOAD_RESULTS)
+test-db-up:
+	@echo "Starting test database..."
+	docker compose -f docker-compose.test.yml up -d db_test
+	@echo "Waiting for database to be ready..."
+	docker compose -f docker-compose.test.yml up migrations_test
+	@echo "Test database is ready"
 
-load-test-baseline: build-loadtest
-	@mkdir -p $(LOAD_RESULTS)
-	./bin/loadtest -base $(LOAD_BASE) -profile baseline -vus $(LOAD_VUS) -rps $(LOAD_RPS) -duration $(LOAD_DURATION) -out $(LOAD_RESULTS)
+test-db-down:
+	docker compose -f docker-compose.test.yml down
 
-load-test-mass: build-loadtest
-	@mkdir -p $(LOAD_RESULTS)
-	./bin/loadtest -base $(LOAD_BASE) -profile mass -vus $(LOAD_VUS) -rps $(LOAD_RPS) -duration $(LOAD_DURATION) -out $(LOAD_RESULTS)
+test-integration: test-db-up
+	@echo "Running Integration Tests"
+	TEST_DB_HOST=$(TEST_DB_HOST) \
+	TEST_DB_PORT=$(TEST_DB_PORT) \
+	TEST_DB_USER=$(TEST_DB_USER) \
+	TEST_DB_PASSWORD=$(TEST_DB_PASSWORD) \
+	TEST_DB_NAME=$(TEST_DB_NAME) \
+	$(GO) test -v ./internal/integration/... -timeout=5m
+	@$(MAKE) test-db-down
 
-load-test-all: build-loadtest
-	@echo "==> SMOKE"
-	$(MAKE) load-test-smoke
-	@echo "==> BASELINE"
-	$(MAKE) load-test-baseline
-	@echo "==> MASS"
-	$(MAKE) load-test-mass
-	@echo "==> All load tests finished. Results in $(LOAD_RESULTS)"
+test-e2e: test-db-up
+	@echo "=== Running E2E Tests ==="
+	TEST_DB_HOST=$(TEST_DB_HOST) \
+	TEST_DB_PORT=$(TEST_DB_PORT) \
+	TEST_DB_USER=$(TEST_DB_USER) \
+	TEST_DB_PASSWORD=$(TEST_DB_PASSWORD) \
+	TEST_DB_NAME=$(TEST_DB_NAME) \
+	$(GO) test -v ./internal/e2e/... -timeout=10m
+	@$(MAKE) test-db-down
 
-load-run-all: load-up load-test-all
-	@echo "==> Load tests finished against $(LOAD_BASE)"
+test-all: test-db-up
+	@echo "Running All Tests"
+	TEST_DB_HOST=$(TEST_DB_HOST) \
+	TEST_DB_PORT=$(TEST_DB_PORT) \
+	TEST_DB_USER=$(TEST_DB_USER) \
+	TEST_DB_PASSWORD=$(TEST_DB_PASSWORD) \
+	TEST_DB_NAME=$(TEST_DB_NAME) \
+	$(GO) test -v ./internal/integration/... ./internal/e2e/... -timeout=10m
+	@$(MAKE) test-db-down
+
+ci: test-all
+
+dev-all: up load-up test-db-up
+	@echo "All environments running:"
+	@echo "- App: http://localhost:8080"
+	@echo "- Load test: http://localhost:18080"
+	@echo "- Test DB: $(TEST_DB_HOST):$(TEST_DB_PORT)"
+
+down-all: down load-down test-db-down
+	@echo "All environments stopped"
+
+lint:
+	@golangci-lint run --timeout=3m
+
+fmt:
+	@gofumpt -w .
+	@goimports -w .
+
+tidy:
+	$(GO) mod tidy
+
+code-check: tidy fmt lint
+	@echo "Code quality check passed"

@@ -1,7 +1,7 @@
 package services
 
 import (
-    "github.com/lypolix/avito_test/internal/models"
+	"github.com/lypolix/avito_test/internal/models"
 )
 
 func (s *Service) GetStats() (*models.StatsResponse, error) {

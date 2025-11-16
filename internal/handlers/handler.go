@@ -1,9 +1,10 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/lypolix/avito_test/internal/models"
 	"github.com/lypolix/avito_test/internal/services"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,8 +52,8 @@ func (h *Handler) getHTTPStatus(errorCode string) int {
 		return http.StatusBadRequest
 	case services.ErrorNotFound:
 		return http.StatusNotFound
-	case services.ErrorInvalidTeam, services.ErrorUserInOtherTeam: 
-        return http.StatusBadRequest
+	case services.ErrorInvalidTeam, services.ErrorUserInOtherTeam:
+		return http.StatusBadRequest
 	case services.ErrorPRMerged, services.ErrorNotAssigned, services.ErrorNoCandidate, services.ErrorPRExists:
 		return http.StatusConflict
 	default:

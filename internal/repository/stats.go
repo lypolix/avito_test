@@ -1,8 +1,9 @@
 package repository
 
 import (
-    "database/sql"
-    "github.com/lypolix/avito_test/internal/models"
+	"database/sql"
+
+	"github.com/lypolix/avito_test/internal/models"
 )
 
 func (r *Repository) GetUserAssignmentStats() ([]models.UserStat, error) {
@@ -19,7 +20,7 @@ func (r *Repository) GetUserAssignmentStats() ([]models.UserStat, error) {
 		GROUP BY u.user_id, u.username, u.team_name, u.is_active
 		ORDER BY assignments_count DESC, u.user_id
 	`
-	
+
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
@@ -54,7 +55,7 @@ func (r *Repository) GetPRAssignmentStats() ([]models.PRStat, error) {
 		GROUP BY pr.pull_request_id, pr.pull_request_name, pr.author_id, pr.status, u.team_name
 		ORDER BY reviewers_count DESC, pr.pull_request_id
 	`
-	
+
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err

@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"github.com/lypolix/avito_test/internal/models"
 	"net/http"
+
+	"github.com/lypolix/avito_test/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -40,37 +41,36 @@ func (h *Handler) SetUserActive(c *gin.Context) {
 }
 
 func (h *Handler) BulkDeactivateUsers(c *gin.Context) {
-    var req models.BulkDeactivateRequest
+	var req models.BulkDeactivateRequest
 
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, models.ErrorResponse{
-            Error: models.ErrorDetail{
-                Code:    "BAD_REQUEST",
-                Message: "Invalid request body",
-            },
-        })
-        return
-    }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: models.ErrorDetail{
+				Code:    "BAD_REQUEST",
+				Message: "Invalid request body",
+			},
+		})
+		return
+	}
 
-    if req.TeamName == "" || len(req.UserIDs) == 0 {
-        c.JSON(http.StatusBadRequest, models.ErrorResponse{
-            Error: models.ErrorDetail{
-                Code:    "BAD_REQUEST",
-                Message: "team_name and user_ids are required",
-            },
-        })
-        return
-    }
+	if req.TeamName == "" || len(req.UserIDs) == 0 {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: models.ErrorDetail{
+				Code:    "BAD_REQUEST",
+				Message: "team_name and user_ids are required",
+			},
+		})
+		return
+	}
 
-    response, err := h.service.BulkDeactivateUsers(req.TeamName, req.UserIDs)
-    if err != nil {
-        h.handleError(c, err)
-        return
-    }
+	response, err := h.service.BulkDeactivateUsers(req.TeamName, req.UserIDs)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
 
-    c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, response)
 }
-
 
 func (h *Handler) GetUserPRs(c *gin.Context) {
 	userID := c.Query("user_id")

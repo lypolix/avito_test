@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"github.com/lypolix/avito_test/internal/models"
 	"database/sql"
+
+	"github.com/lypolix/avito_test/internal/models"
 )
 
 func (r *Repository) CreateUser(user *models.User) error {
@@ -72,7 +73,6 @@ func (r *Repository) GetUsersByTeam(teamName string) ([]models.User, error) {
 	return users, nil
 }
 
-
 func (r *Repository) GetActiveUsersByTeamInTx(tx *sql.Tx, teamName string) ([]models.User, error) {
 	query := `SELECT user_id, username, team_name, is_active 
 	          FROM users WHERE team_name = $1 AND is_active = true`
@@ -98,7 +98,7 @@ func (r *Repository) IsUserInOtherTeam(userID, teamName string) (bool, error) {
 	var existingTeamName string
 	err := r.db.QueryRow(query, userID).Scan(&existingTeamName)
 	if err == sql.ErrNoRows {
-		return false, nil 
+		return false, nil
 	}
 	if err != nil {
 		return false, err

@@ -47,7 +47,7 @@ func Load() (*Config, error) {
 			IdleTimeout:  getEnvAsDuration("SERVER_IDLE_TIMEOUT", 60*time.Second),
 		},
 		Database: DatabaseConfig{
-			Host:            getEnv("DB_HOST", "db"), 
+			Host:            getEnv("DB_HOST", "db"),
 			Port:            getEnv("DB_PORT", "5432"),
 			User:            getEnv("DB_USER", "avito_user"),
 			Password:        getEnv("DB_PASSWORD", "avito_pass"),

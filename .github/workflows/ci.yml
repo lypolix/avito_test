@@ -2,62 +2,48 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, develop ]
   pull_request:
 
 jobs:
-  lint-test-build:
+  test:
     runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass  
+          POSTGRES_DB: appdb_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v4
         with:
           go-version: '1.25'
+          cache: true
 
-    #   - name: GolangCI-Lint
-    #     uses: golangci/golangci-lint-action@v4
-    #     with:
-    #       version: v1.65.0
+      - name: Wait for database
+        run: sleep 10
 
-      - name: Build
-        run: go build ./cmd/server
+      - name: Run migrations
+        run: |
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+          migrate -path ./migrations -database "postgres://test_user:test_pass@localhost:5432/appdb_test?sslmode=disable" up
 
-      - name: Run unit tests
-        run: go test -race -coverprofile=coverage.out ./...
-
-#   e2e:
-#     runs-on: ubuntu-latest
-#     services:
-#       postgres:
-#         image: postgres:16-alpine
-#         env:
-#           POSTGRES_USER: app
-#           POSTGRES_PASSWORD: app
-#           POSTGRES_DB: app
-#         ports:
-#           - 5432:5432
-#         options: >-
-#           --health-cmd="pg_isready -U app -d app"
-#           --health-interval=5s
-#           --health-timeout=3s
-#           --health-retries=10
-#     steps:
-#       - uses: actions/checkout@v4
-#       - uses: actions/setup-go@v5
-#         with:
-#           go-version: '1.22'
-#       - name: Build server
-#         run: go build -o server ./cmd/server
-#       - name: Start server in background
-#         env:
-#           DATABASE_URL: postgres://app:app@localhost:5432/app?sslmode=disable
-#         run: |
-#           ./server &
-#           sleep 2
-#       - name: Smoke/E2E placeholder
-#         run: |
-#           curl -sSf http://localhost:8080/health || (echo "Health failed" && exit 1)
+      - name: Build and test
+        run: |
+          go build ./cmd/server
+          TEST_DB_HOST=localhost TEST_DB_PORT=5432 TEST_DB_USER=test_user TEST_DB_PASSWORD=test_pass TEST_DB_NAME=appdb_test \
+          go test -race -v ./internal/... -timeout=10m

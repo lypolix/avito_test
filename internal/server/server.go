@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/lypolix/avito_test/internal/config"
 	"github.com/gin-gonic/gin"
+	"github.com/lypolix/avito_test/internal/config"
 )
 
 type Server struct {
@@ -15,7 +15,7 @@ type Server struct {
 
 func New(serverConfig config.ServerConfig) *Server {
 	router := gin.Default()
-	
+
 	return &Server{
 		httpServer: &http.Server{
 			Addr:         ":" + serverConfig.Port,
