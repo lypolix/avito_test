@@ -43,8 +43,11 @@ test:
 clean:
 	rm -rf ./bin
 
-up:
+up: setup-env
 	docker compose up -d --build
+
+compose-up: setup-env
+	docker-compose up -d --build
 
 down:
 	docker compose down
@@ -65,9 +68,15 @@ load-down:
 	docker compose down --remove-orphans --timeout 10
 
 load-test-all: load-up
-	@echo "Running load tests against $(LOAD_BASE)"
+	@echo "Running ALL load tests against $(LOAD_BASE)"
 	@mkdir -p $(LOAD_RESULTS)
+	@echo "Smoke Test"
+	$(GO) run ./cmd/loadtest -base $(LOAD_BASE) -profile smoke -vus 5 -rps 2 -duration 1m -out $(LOAD_RESULTS)
+	@echo "Baseline Test"
 	$(GO) run ./cmd/loadtest -base $(LOAD_BASE) -profile baseline -vus $(LOAD_VUS) -rps $(LOAD_RPS) -duration $(LOAD_DURATION) -out $(LOAD_RESULTS)
+	@echo "Mass Test"
+	$(GO) run ./cmd/loadtest -base $(LOAD_BASE) -profile mass -vus 50 -rps 20 -duration 3m -out $(LOAD_RESULTS)
+	@echo "All load tests completed"
 
 test-db-up:
 	@echo "Starting test database..."

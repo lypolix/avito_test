@@ -12,7 +12,7 @@ func (s *Service) SetUserActive(userID string, isActive bool) (*models.User, err
 		return nil, err
 	}
 	if user == nil {
-		return nil, NewBusinessError(ErrorNotFound, "user not found")
+		return nil, NewBusinessError(ErrorNotFound, "resource not found")
 	}
 
 	if err := s.repo.UpdateUserActive(userID, isActive); err != nil {
@@ -33,7 +33,7 @@ func (s *Service) GetUserPRs(userID string) (*models.UserPRsResponse, error) {
 		return nil, err
 	}
 	if user == nil {
-		return nil, NewBusinessError(ErrorNotFound, "user not found")
+		return nil, NewBusinessError(ErrorNotFound, "resource not found")
 	}
 
 	prs, err := s.repo.GetPRsByReviewer(userID)

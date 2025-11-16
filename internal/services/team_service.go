@@ -10,7 +10,7 @@ func (s *Service) CreateTeam(team *models.Team) error {
 		return err
 	}
 	if exists {
-		return NewBusinessError(ErrorTeamExists, "team already exists")
+		return NewBusinessError(ErrorTeamExists, "team_name already exists")
 	}
 
 	for _, member := range team.Members {

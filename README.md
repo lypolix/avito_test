@@ -1,12 +1,27 @@
-### Для запуска создать .env файл
+## Запуск
+
+### Для docker Compose:
+```
+make up
+````
+или 
+```
+docker compose up -d --build
+```
+
+Для docker-compose:
+```
+make compose-up  
+```
+или
+```
+docker-compose up -d --build
+```
+
+
+### При необходимости создать .env файл (в Makefile это уже предусмотрено)
 ```
 cp .env.example .env
-```
-
-### Запустить 
-
-```
-docker-compose up 
 ```
 
 
