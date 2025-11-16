@@ -43,10 +43,10 @@ test:
 clean:
 	rm -rf ./bin
 
-up: setup-env
+up: setup
 	docker compose up -d --build
 
-compose-up: setup-env
+compose-up: setup
 	docker-compose up -d --build
 
 down:
