@@ -214,7 +214,7 @@ HTTP статус-коды корректны
 
 ## Запуск
 
-### Для docker Compose:
+### Для docker compose:
 
 ```
 make up
@@ -224,7 +224,7 @@ make up
 docker compose up -d --build
 ```
 
-Для docker-compose:
+### Для docker-compose:
 
 ```
 make compose-up  
@@ -316,10 +316,14 @@ Load test сервис будет доступен по адресу: http://loc
 ## Линтер 
 
 ### Проверить форматирование и зависимости
+```
 make code-check
+```
 
 ### Запустить линтер
+```
 make lint
+```
 
 **Требования:**
 - Docker  
