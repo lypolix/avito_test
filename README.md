@@ -248,6 +248,7 @@ docker-compose up -d --build
 cp .env.example .env
 ```
 
+**В остальных командах запуска в Makefile использую docker compose (как более современный)**
 
 ## Доступ к базе данных (если нужно)
 
@@ -385,5 +386,6 @@ make lint
 - Исключается конфликт интересов.  
 - Повышается корректность и прозрачность ревью.
 
+--- 
 
-* В моём Makefile используется docker compose
+В моём Makefile используется docker compose
