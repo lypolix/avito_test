@@ -8,6 +8,12 @@ GO := go
 # Docker Compose команда - ПОМЕНЯЙТЕ ЗДЕСЬ НА docker compose, если используете его 
 DOCKER_COMPOSE ?= docker-compose
 
+POSTGRES_USER ?= postgres
+POSTGRES_PASSWORD ?= password
+POSTGRES_DB ?= appdb
+DB_HOST ?= localhost
+DB_PORT ?= 5432
+
 LOAD_BASE ?= http://localhost:18080
 LOAD_VUS ?= 10
 LOAD_RPS ?= 5
@@ -146,4 +152,3 @@ code-check: tidy fmt lint
 
 docker-compose-cmd:
 	@echo "Using: $(DOCKER_COMPOSE)"
-

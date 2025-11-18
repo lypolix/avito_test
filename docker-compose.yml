@@ -7,9 +7,9 @@ services:
     environment:
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB:-appdb}
     depends_on:
       db:
         condition: service_healthy
@@ -24,27 +24,28 @@ services:
     environment:
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB:-appdb}
     depends_on:
       db:
         condition: service_healthy
-    command: ["./migrate", "-path", "./migrations", "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable", "up"]
+    command: ["./migrate", "-path", "./migrations", "-database", "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-appdb}?sslmode=disable", "up"]
     restart: "no"
 
   db:
     image: postgres:16-alpine
     container_name: avito_db
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-appdb}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-appdb}"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -57,9 +58,9 @@ services:
     environment:
       - DB_HOST=db_load
       - DB_PORT=5432
-      - DB_USER=${LOADTEST_USER}
-      - DB_PASSWORD=${LOADTEST_PASSWORD}
-      - DB_NAME=${LOADTEST_DB}
+      - DB_USER=${LOADTEST_USER:-postgres}
+      - DB_PASSWORD=${LOADTEST_PASSWORD:-password}
+      - DB_NAME=${LOADTEST_DB:-appdb_load}
     depends_on:
       db_load:
         condition: service_healthy
@@ -74,27 +75,28 @@ services:
     environment:
       - DB_HOST=db_load
       - DB_PORT=5432
-      - DB_USER=${LOADTEST_USER}
-      - DB_PASSWORD=${LOADTEST_PASSWORD}
-      - DB_NAME=${LOADTEST_DB}
+      - DB_USER=${LOADTEST_USER:-postgres}
+      - DB_PASSWORD=${LOADTEST_PASSWORD:-password}
+      - DB_NAME=${LOADTEST_DB:-appdb_load}
     depends_on:
       db_load:
         condition: service_healthy
-    command: ["./migrate", "-path", "./migrations", "-database", "postgres://${LOADTEST_USER}:${LOADTEST_PASSWORD}@db_load:5432/${LOADTEST_DB}?sslmode=disable", "up"]
+    command: ["./migrate", "-path", "./migrations", "-database", "postgres://${LOADTEST_USER:-postgres}:${LOADTEST_PASSWORD:-password}@db_load:5432/${LOADTEST_DB:-appdb_load}?sslmode=disable", "up"]
     restart: "no"
 
   db_load:
     image: postgres:16-alpine
     container_name: avito_db_load
     environment:
-      - POSTGRES_USER=${LOADTEST_USER}
-      - POSTGRES_PASSWORD=${LOADTEST_PASSWORD}
-      - POSTGRES_DB=${LOADTEST_DB}
+      - POSTGRES_USER=${LOADTEST_USER:-postgres}
+      - POSTGRES_PASSWORD=${LOADTEST_PASSWORD:-password}
+      - POSTGRES_DB=${LOADTEST_DB:-appdb_load}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${LOADTEST_USER} -d ${LOADTEST_DB}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U ${LOADTEST_USER:-postgres} -d ${LOADTEST_DB:-appdb_load}"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
     volumes:
       - postgres_data_load:/var/lib/postgresql/data
     restart: unless-stopped
